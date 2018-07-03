@@ -7,18 +7,27 @@ import android.support.v4.view.ViewPager
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.contains
 
+@DslMarker
+annotation class XPagerAdapterDsL
 
 typealias OnClick = Function<Any>
 typealias Handle = Pair<Int, OnClick>
 typealias Model = Pair<Int, Any>
 typealias Action = ((ViewDataBinding) -> Unit)
 
+@XPagerAdapterDsL
 class XDslPagerAdapter : PagerAdapter() {
 
     private val items: MutableList<Item> = mutableListOf()
 
-    lateinit var layoutInflater: LayoutInflater
+    private lateinit var layoutInflater: LayoutInflater
+
+    fun create(viewPager: ViewPager) {
+        layoutInflater = LayoutInflater.from(viewPager.context)
+        viewPager.adapter = this
+    }
 
     fun item(layoutId: Int, init: Item.() -> Unit) {
         val item = Item(layoutId)
@@ -26,18 +35,19 @@ class XDslPagerAdapter : PagerAdapter() {
         items.add(item)
     }
 
-    fun create(viewPager: ViewPager) {
-        layoutInflater = LayoutInflater.from(viewPager.context)
-        viewPager.adapter = this
-    }
-
     override fun instantiateItem(container: ViewGroup, position: Int): Any {
         return items[position].apply {
 
             binding?.let {
-                container.addView(it.root)
+                if (!container.contains(it.root))
+                    container.addView(it.root)
             } ?: run {
-                binding = DataBindingUtil.inflate(layoutInflater, layoutId, container, false)
+                binding = DataBindingUtil.inflate(
+                    this@XDslPagerAdapter.layoutInflater,
+                    layoutId,
+                    container,
+                    false
+                )
 
                 model?.run { binding?.setVariable(first, second) }
 
@@ -45,7 +55,7 @@ class XDslPagerAdapter : PagerAdapter() {
                     binding?.setVariable(it.first, it.second)
                 }
 
-                binding?.let { mAction.invoke(it) }
+                binding?.let { action?.invoke(it) }
 
                 binding?.executePendingBindings()
 
@@ -55,7 +65,8 @@ class XDslPagerAdapter : PagerAdapter() {
     }
 
 
-    override fun isViewFromObject(view: View, `object`: Any) = view == (`object` as Item).binding?.root
+    override fun isViewFromObject(view: View, `object`: Any) =
+        view == (`object` as Item).binding?.root
 
     override fun destroyItem(container: ViewGroup, position: Int, `object`: Any) {
         container.removeView((`object` as Item).binding?.root)
@@ -63,19 +74,20 @@ class XDslPagerAdapter : PagerAdapter() {
 
     override fun getItemPosition(`object`: Any): Int {
         val pos = items.indexOf(`object` as Item)
-        return if (pos == -1) POSITION_NONE
-        else pos
+        return if (pos == -1) POSITION_NONE else pos
     }
 
     override fun getCount() = items.size
 }
 
-class Item(val layoutId: Int,
-           var model: Model? = null,
-           var handle: MutableList<Handle> = mutableListOf(),
-           var mAction: Action = { _ -> },
-           var binding: ViewDataBinding? = null) {
-
+@XPagerAdapterDsL
+class Item(
+    val layoutId: Int,
+    var model: Model? = null,
+    var handle: MutableList<Handle> = mutableListOf(),
+    var action: Action? = null,
+    var binding: ViewDataBinding? = null
+) {
 
     fun model(model: Model, init: (Model.() -> Unit)? = null): Model? {
         this.model = model
@@ -91,7 +103,7 @@ class Item(val layoutId: Int,
 
     //TODO Generic the Binding
     fun action(action: Action) {
-        this.mAction = action
+        this.action = action
     }
 
 
