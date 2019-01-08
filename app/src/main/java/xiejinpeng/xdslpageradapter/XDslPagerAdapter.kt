@@ -44,21 +44,15 @@ class XDslPagerAdapter : PagerAdapter() {
             } ?: run {
                 binding = DataBindingUtil.inflate(
                     this@XDslPagerAdapter.layoutInflater,
-                    layoutId,
-                    container,
-                    false
+                    layoutId, container,false
                 )
 
                 model?.run { binding?.setVariable(first, second) }
-
                 handle.forEach {
                     binding?.setVariable(it.first, it.second)
                 }
-
                 binding?.let { action?.invoke(it) }
-
                 binding?.executePendingBindings()
-
                 container.addView(binding?.root)
             }
         }
