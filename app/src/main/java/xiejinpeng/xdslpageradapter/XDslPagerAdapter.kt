@@ -13,7 +13,7 @@ import androidx.core.view.contains
 annotation class XPagerAdapterDsL
 
 typealias OnClick = Function<Any>
-typealias Handle = Pair<Int, OnClick>
+typealias Click = Pair<Int, OnClick>
 typealias Model = Pair<Int, Any>
 typealias Action = ((ViewDataBinding) -> Unit)
 
@@ -44,13 +44,11 @@ class XDslPagerAdapter : PagerAdapter() {
             } ?: run {
                 binding = DataBindingUtil.inflate(
                     this@XDslPagerAdapter.layoutInflater,
-                    layoutId, container,false
+                    layoutId, container, false
                 )
 
                 model?.run { binding?.setVariable(first, second) }
-                handle.forEach {
-                    binding?.setVariable(it.first, it.second)
-                }
+                clicks.forEach { binding?.setVariable(it.first, it.second) }
                 binding?.let { action?.invoke(it) }
                 binding?.executePendingBindings()
                 container.addView(binding?.root)
@@ -78,7 +76,7 @@ class XDslPagerAdapter : PagerAdapter() {
 class Item(
     val layoutId: Int,
     var model: Model? = null,
-    var handle: MutableList<Handle> = mutableListOf(),
+    var clicks: MutableList<Click> = mutableListOf(),
     var action: Action? = null,
     var binding: ViewDataBinding? = null
 ) {
@@ -89,10 +87,10 @@ class Item(
         return model
     }
 
-    fun handle(handle: Handle, init: (Handle.() -> Unit?)? = null): Handle? {
-        this.handle.add(handle)
-        init?.run { handle.init() }
-        return handle
+    fun click(click: Click, init: (Click.() -> Unit?)? = null): Click? {
+        this.clicks.add(click)
+        init?.run { click.init() }
+        return click
     }
 
     //TODO Generic the Binding
